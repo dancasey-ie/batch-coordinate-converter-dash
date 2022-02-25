@@ -1,0 +1,11 @@
+bin/
+etc/
+include/
+lib/
+__pycache__/
+lib64
+pyvenv.cfg
+share/
+.DS_Store
+.vscode/
+*env.py
