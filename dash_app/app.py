@@ -6,6 +6,7 @@ import pyproj
 import os
 
 app = Dash(__name__,
+           url_base_pathname="/batch-coordinate-converter/",
            meta_tags=[{"name": "viewport",
                        "content": "width=device-width, initial-scale=1"}],
            external_stylesheets=[
