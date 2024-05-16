@@ -1,6 +1,8 @@
 # Batch Coordinate Converter
 
-Batch Coordinate Converter is  Python [Dash](https://dash.plotly.com/) user interface to batch convert coordinates using any tranformation available in [pyproj](https://pyproj4.github.io/pyproj/stable//) 
+Batch Coordinate Converter is  Python [Dash](https://dash.plotly.com/) user interface to batch convert coordinates using any transformation available in [pyproj](https://pyproj4.github.io/pyproj/stable//).
+
+This is an old project that I keep live. A lot could be improved in the code, but I have not found the time to update.
 
 
 ## Requirements
@@ -15,7 +17,7 @@ Clone the repository and install dependencies.
 
 ```
 git clone https://github.com/dancasey-ie/batch-coordinate-converter-dash
-cd Grid2LatLon
+cd batch-coordinate-converter-dash
 ```
 You can run the application using docker-compose, docker or as a python application, each detailed below.
 
@@ -36,7 +38,7 @@ docker run -it -p 8080:8080 -e MAPBOX_TOKEN=${MAPBOX_TOKEN} --name batch-coordin
 ### Using Python (venv)
 
 ```
-python3 -m venv .
+python3 -m venv ./env
 source bin/activate
 pip install -r dash_app/requirements.txt
 python dash_app/app.py

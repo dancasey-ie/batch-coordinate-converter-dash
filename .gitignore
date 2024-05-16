@@ -9,3 +9,4 @@ share/
 .DS_Store
 .vscode/
 *env.py
+env/*
