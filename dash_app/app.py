@@ -71,7 +71,7 @@ sidebar = html.Div(id='sidebar',
                         html.Div('Convert between any ESPG coordinate systems, in batches of upto 200 points.'),
                         html.H2('How to use this tool:'),
                         
-                html.Ul([
+                html.Ul(children=[
                         html.Li("Text filter your desired input and output systems. Defaulted to the Irish Grid "),
                         html.Li("Copy and paste coordinate columns from a spreadsheet into the input table"),
                         html.Li("Click 'Convert'"),
@@ -81,6 +81,7 @@ sidebar = html.Div(id='sidebar',
                         html.Li("Data points will be plotted on the map below the table."),
                 ]),    
                        html.H2('User notes:'),
+                       html.Ul(children=[
                        html.Li("For GPS (Lat, Lon) coordinates use WGS 84 - epsg:4326"),
                        html.Li("This is an old project that I do not actively maintain but am happy to keep alive as people seem to be using it."),
                        html.Li(children=[
@@ -93,6 +94,7 @@ sidebar = html.Div(id='sidebar',
                             html.A("dancasey.ie", href="https://dancasey.ie", target="_blank"),
                             "."
                        ]),
+                       ]),    
                    ]
                    )
 main = html.Div(
