@@ -17,10 +17,38 @@ app = Dash(__name__,
 server = app.server
 app.title = 'Batch Coordinate Converter'
 
-epsg_list = []
-for epsg in pyproj.get_codes('EPSG', 'CRS'):
-    name = pyproj.CRS("epsg:{}".format(epsg)).name
-    epsg_list.append("{} - epsg:{}".format(name, epsg))
+GA_MEASUREMENT_ID = os.environ.get('GA_MEASUREMENT_ID', None)
+
+if GA_MEASUREMENT_ID:
+    # Inject Google Analytics script into the <head>
+    app.index_string = f"""
+        <!DOCTYPE html>
+        <html>
+            <head>
+                {{%metas%}}
+                <title>{{%title%}}</title>
+                {{%favicon%}}
+                {{%css%}}
+                
+                <!-- Google tag (gtag.js) -->
+                <script async src="https://www.googletagmanager.com/gtag/js?id={GA_MEASUREMENT_ID}"></script>
+                <script>
+                window.dataLayer = window.dataLayer || [];
+                function gtag(){{dataLayer.push(arguments);}}
+                gtag('js', new Date());
+                gtag('config', '{GA_MEASUREMENT_ID}');
+                </script>
+            </head>
+            <body>
+                {{%app_entry%}}
+                <footer>
+                    {{%config%}}
+                    {{%scripts%}}
+                    {{%renderer%}}
+                </footer>
+            </body>
+        </html>
+    """
 
 # Mapbox setup
 mapbox_url = "https://api.mapbox.com/styles/v1/mapbox/{id}/tiles/{{z}}/{{x}}/{{y}}{{r}}?access_token={access_token}"
@@ -30,6 +58,11 @@ except:
     print("Failed to locate MAPBOX_TOKEN environmental variable. Register a token at https://docs.mapbox.com/help/getting-started/access-tokens/")
 mapbox_ids = ["light-v9", "dark-v9", "streets-v9",
               "outdoors-v9", "satellite-streets-v9"]
+
+epsg_list = []
+for epsg in pyproj.get_codes('EPSG', 'CRS'):
+    name = pyproj.CRS("epsg:{}".format(epsg)).name
+    epsg_list.append("{} - epsg:{}".format(name, epsg))
 
 MAP_ID = "map-id"
 BASE_LAYER_ID = "base-layer-id"
