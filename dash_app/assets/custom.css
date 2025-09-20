@@ -1,21 +1,6 @@
-.main {
-    margin-left: 20rem;
-    margin-right: 2rem;
-    padding: 2rem 1rem;
-}
 
-.sidebar {
-    position: fixed;
-    overflow:scroll;
-     top: 0;
-     left: 0;
-     bottom: 0;
-     width: 20rem;
-     padding: 2rem 1rem;
-     background-color: #f8f9fa
- }
 
- h1, h2, h3, h4 {
+h1, h2, h3, h4 {
     font-family: 'Open Sans', sans-serif;
     font-weight: 500;
 }
@@ -37,14 +22,37 @@ h2 {
     font-size: 21px;
 }
 
+.main {
+    margin-left: 20rem;
+    margin-right: 10rem;
+    padding: 2rem 1rem;
+}
+
+.sidebar {
+    position: fixed;
+    overflow:scroll;
+     top: 0;
+     left: 0;
+     bottom: 0;
+     width: 20rem;
+     padding: 2rem 1rem;
+     background-color: #f8f9fa
+ }
+
+.map_marker_tooltip{
+    text-align: left;
+}
+
 #table-container {
-    height:75vh;
+    height:50vh;
     overflow:scroll;
     border: solid 1px grey;
 }
 
+#map-container {
+    height:30vh;
+}
+
 #map-id {
     margin-top:50px;
-    /* height:40vh!important; */
-    /* width:50%!important; */
 }

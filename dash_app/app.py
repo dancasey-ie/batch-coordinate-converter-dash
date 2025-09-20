@@ -35,40 +35,45 @@ MAP_ID = "map-id"
 BASE_LAYER_ID = "base-layer-id"
 BASE_LAYER_DROPDOWN_ID = "base-layer-drop-down-id"
 COORDINATE_CLICK_ID = "coordinate-click-id"
+MAX_NUM_OF_ROWS = 1000
 
 # defaults
 initial_input_dropdown_value = "TM75 / Irish Grid - epsg:29903"
 initial_output_dropdown_value = "WGS 84 - epsg:4326"
 initial_data = [	
-    {"x": 80367, "y":84425, "id":"Corrán Tuathail"},
-    {"x": 335793, "y":327689, "id":"Slieve Donard"}
+    {"x_src": 80367, "y_src":84425, "id":"Corrán Tuathail"},
+    {"x_src": 335793, "y_src":327689, "id":"Slieve Donard"}
 ]
-empty_data = [dict() for i in range(1, 200)]
-initial_data = initial_data + empty_data
+initial_data = initial_data + [dict() for i in range(1, MAX_NUM_OF_ROWS - len(initial_data))]
+empty_data = [dict() for i in range(1, MAX_NUM_OF_ROWS)]
 
 input_table = dash_table.DataTable(
     id='input-table',
-    columns=([{'id': 'x', 'name': 'X / Lat', 'type': 'numeric'},
-             {'id': 'y', 'name': 'Y / Lon', 'type': 'numeric'},
+    columns=([{'id': 'x_src', 'name': 'Lat / Northing', 'type': 'numeric'},
+             {'id': 'y_src', 'name': 'Lon / Easting', 'type': 'numeric'},
              {'id': 'id', 'name': 'ID', 'type': 'text'}
               ]),
     data=initial_data,
-    editable=True)
+    editable=True, 
+    page_action='none',
+    )
 
 output_table = dash_table.DataTable(
     id='output-table',
-    columns=([{'id': 'x', 'name': 'X / Lat', 'type': 'numeric'},
-             {'id': 'y', 'name': 'Y / Lon', 'type': 'numeric'},
+    columns=([{'id': 'x_res', 'name': 'Lat / Northing', 'type': 'numeric'},
+             {'id': 'y_res', 'name': 'Lon / Easting', 'type': 'numeric'},
              {'id': 'id', 'name': 'ID', 'type': 'text'}
               ]),
-    data=[dict() for i in range(1, 200)],
-    editable=False)
+    data=empty_data,
+    editable=False,
+    page_action='none',
+    )
 
 sidebar = html.Div(id='sidebar',
                    className='sidebar',
                    children=[
                         html.H1('Batch Coordinate Converter'),
-                        html.Div('Convert between any ESPG coordinate systems, in batches of upto 200 points.'),
+                        html.Div(f'Convert between any ESPG coordinate systems, in batches of upto {MAX_NUM_OF_ROWS} points.'),
                         html.H2('How to use this tool:'),
                         
                 html.Ul(children=[
@@ -78,7 +83,8 @@ sidebar = html.Div(id='sidebar',
                         html.Li("Copy and paste coordinate columns from the output table into your spreadsheet"),
                         html.Li("Use Shift to select multiple cells same as excel"),
                         html.Li("You can paste identifier data into the the 'ID' column for identifying when plotted"),
-                        html.Li("Data points will be plotted on the map below the table."),
+                        html.Li("Data point markers will be plotted on the map below the table."),
+                        html.Li("Clicking on the marker will show a pop up with the coordinates as well as a link out to Google Maps so locations can be validated with satellite and Google Street View."),
                 ]),    
                        html.H2('User notes:'),
                        html.Ul(children=[
@@ -105,7 +111,7 @@ main = html.Div(
             [dbc.Row([
                 dbc.Col(
                     html.Div([
-                        'Convert from:',
+                        'Convert Data:',
                         dcc.Dropdown(
                             options=epsg_list,
                             value=initial_input_dropdown_value,
@@ -116,7 +122,11 @@ main = html.Div(
                 dbc.Col(
                     html.Div([
                         dbc.Button(
-                            'Convert', id='convert-btn', n_clicks=0)
+                            'Convert', id='convert-btn', n_clicks=0),
+                        html.Br(),
+                        html.Br(),
+                        dbc.Button(
+                        'Clear Input Data', id='clear-btn', n_clicks=0)
                     ]
                     ),
                     className='col-12 col-md-2 text-center'),
@@ -163,41 +173,35 @@ main = html.Div(
                 ],
                 id='table-container'
             ),
+            # dbc.Row([]),
             dbc.Row([
-                    # dbc.Col(
-                    #     dbc.Button(
-                    #         'View on Map', id='view-on-map-btn', n_clicks=0),
-                    #     className='col-12 col-md-2 offset-md-5'
-                    # )
-                    ]),
-                dbc.Row([
-                    dbc.Col(
-                        dl.Map(id=MAP_ID,
-                               style={'width': '100%', 'height': '500px'},
-                               center=[53.0, -8.0],
-                               zoom=2,
-                               children=[
-                                   dl.LayerGroup(id="markers"),
-                                   dl.LocateControl(options={'locateOptions': {
-                                       'enableHighAccuracy': True}}),
-                                   dl.MeasureControl(position="topleft", primaryLengthUnit="kilometers", primaryAreaUnit="hectares",
-                                                     activeColor="#214097", completedColor="#972158"),
-                                   dl.LayersControl(
-                                       [dl.BaseLayer([
-                                           dl.TileLayer(url=mapbox_url.format(
-                                               id=mapbox_id, 
-                                               access_token=mapbox_token
-                                               )),
+                dbc.Col(
+                    dl.Map(id=MAP_ID,
+                            style={'width': '100%', 'height': '500px'},
+                            center=[53.0, -8.0],
+                            zoom=2,
+                            children=[
+                                dl.LayerGroup(id="markers"),
+                                dl.LocateControl(options={'locateOptions': {
+                                    'enableHighAccuracy': True}}),
+                                dl.MeasureControl(position="topleft", primaryLengthUnit="kilometers", primaryAreaUnit="hectares",
+                                                    activeColor="#214097", completedColor="#972158"),
+                                dl.LayersControl(
+                                    [dl.BaseLayer([
+                                        dl.TileLayer(url=mapbox_url.format(
+                                            id=mapbox_id, 
+                                            access_token=mapbox_token
+                                            )),
 
-                                       ],
-                                           name=mapbox_id,
-                                           checked=mapbox_id == "outdoors-v9") for mapbox_id in mapbox_ids]
-                                   )
-                               ]),
-                        className='col-12 text-center map'),
-                ],
-                id='map-container'
-            )]
+                                    ],
+                                        name=mapbox_id,
+                                        checked=mapbox_id == "satellite-streets-v9") for mapbox_id in mapbox_ids]
+                                )
+                            ]),
+                    className='col-12 text-center map'),
+            ],
+            id='map-container'
+        )]
         )
     ])
 
@@ -215,16 +219,24 @@ app.layout = html.Div(children=[
     State('output-dropdown', 'value'),
 )
 def convert_data(n_clicks, data, input_name, output_name):
-    print("convert_data() entry")
     if input_name != None and output_name != None:
         input_epsg = input_name[input_name.find('epsg:'):]
         output_epsg = output_name[output_name.find('epsg:'):]
-        transformer = pyproj.Transformer.from_crs(input_epsg, output_epsg)
+        conversion_transformer = pyproj.Transformer.from_crs(input_epsg, output_epsg)
+        # convert output to epsg:4326 for map plotting
+        wgs84_transformer = pyproj.Transformer.from_crs(input_epsg, 'epsg:4326')
         for row in data:
             if row=={}:
                 break
             try:
-                row['x'], row['y'] = transformer.transform(row['x'], row['y'])
+                row['x_res'], row['y_res'] = conversion_transformer.transform(row['x_src'], row['y_src'])
+                if input_epsg == 'epsg:4326':
+                    row['lat'], row['lon'] = row['x_src'], row['y_src']
+                elif output_epsg == 'epsg:4326':
+                    row['lat'], row['lon'] = row['x_res'], row['y_res']
+                else:
+                    row['lat'], row['lon'] = wgs84_transformer.transform(row['x_src'], row['y_src'])
+
             except Exception as e:
                 print(e)
     return data
@@ -233,46 +245,60 @@ def convert_data(n_clicks, data, input_name, output_name):
 @app.callback(
     Output('markers', 'children'),
     Input('output-table', 'data'),
-    State('output-dropdown', 'value'),)
-def update_output(data, output_name):
-    print("update_output() entry")
+    State('input-dropdown', 'value'),
+    State('output-dropdown', 'value')
+    )
+def update_output(data, input_name, output_name):
+    if not data or not output_name:
+        return []
+    
     markers_list = []
-    if output_name != None:
-        output_epsg = output_name[output_name.find('epsg:'):]
-        if output_epsg != 'epsg:4326':
-            # convert output to epsg:4326 for map plotting
-            transformer = pyproj.Transformer.from_crs(output_epsg, 'epsg:4326')
-            for row in data:
-                if row=={}:
-                    break
-                try:
-                    row['lat'], row['lon'] = transformer.transform(
-                        row['x'], row['y'])
-                except Exception as e:
+    for i, row in enumerate(data):
+        if row == {}:
+            break
+        try:
+            marker = dl.Marker(
+                position=[row['lat'],row['lon']], 
+                children=dl.Popup(
+                    children=[
+                        html.B("Index:"),
+                        html.Br(),
+                        i,
+                        html.Br(),
+                        html.B("id:"),
+                        html.Br(),
+                        row.get('id'),
+                        html.Br(),
+                        html.B(input_name),
+                        html.Br(),
+                        f"{row['x_src']}, {row['y_src']}",
+                        html.Br(),
+                        html.B(output_name),
+                        html.Br(),
+                        f"{round(row['x_res'], 2)}, {round(row['y_res'], 2)}",
+                        html.Br(),
+                        html.A(
+                            html.Button(["Open Google Maps ", html.I(className="fa fa-external-link-alt")], className="btn-primary"),
+                            href=f"https://www.google.com/maps?q={row['lat']},{row['lon']}&t=k&z=16",
+                            target="_blank"
+                        )
+                    ],
+                    className="map_marker_tooltip",
+                    ))
+            
+            markers_list.append(marker)
+
+        except Exception as e:
                     print(e)
-        else:
-            for row in data:
-                if row=={}:
-                    break
-                row['lat'], row['lon'] = row['x'], row['y']
-
-        for i, row in enumerate(data):
-            if row == {}:
-                break
-            try:
-                marker = dl.Marker(position=[row['lat'], row['lon']],
-                                children=dl.Tooltip(
-                [html.B(f"Index: {i+1}"),
-                html.Br(),
-                f"Id: {row.get('id')}",
-                ]))
-                markers_list.append(marker)
-
-            except Exception as e:
-                        print(e)
 
     return markers_list
 
+@app.callback(
+    Output('input-table', 'data'),
+    Input('clear-btn', 'n_clicks'),
+)
+def clear_input_data(n_clicks):
+    return empty_data
 
 if __name__ == '__main__':
     app.run_server(debug=True)
