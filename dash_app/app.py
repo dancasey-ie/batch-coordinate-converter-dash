@@ -59,7 +59,7 @@ except:
 mapbox_ids = ["light-v9", "dark-v9", "streets-v9",
               "outdoors-v9", "satellite-streets-v9"]
 
-epsg_list = []
+epsg_list = ["Irish National Grid Ref. (with letter) - epsg:29903"]
 for epsg in pyproj.get_codes('EPSG', 'CRS'):
     name = pyproj.CRS("epsg:{}".format(epsg)).name
     epsg_list.append("{} - epsg:{}".format(name, epsg))
@@ -243,6 +243,47 @@ app.layout = html.Div(children=[
     main
 ])
 
+def irishgrid2xy(grid_ref):
+    """
+    Converts irish grid reference as string i.e. "N 15904 34671"
+    to xy (easting northing) with an origin at the bottem
+    left of grid "V"
+    """
+    grid_ref = grid_ref.strip().upper()
+    if " " in grid_ref:
+        grid_ref = grid_ref.split(" ")
+        letter = grid_ref[0]
+        easting = grid_ref[1]
+        northing = grid_ref[2]
+    else:
+        grid_ref_len = len(grid_ref)
+        half_grid_ref_len = (grid_ref_len - 1) // 2
+        additional_zeros = (5 - half_grid_ref_len)*"0"
+
+        easting_end_index = 1 + half_grid_ref_len
+        letter = grid_ref[0]
+        easting = grid_ref[1:easting_end_index] + additional_zeros
+        northing = grid_ref[easting_end_index:] + additional_zeros
+
+
+    # 5x5 grid letters, missing I
+    grid = [("V", "W", "X", "Y", "Z"),
+            ("Q", "R", "S", "T", "U"),
+            ("L", "M", "N", "O", "P"),
+            ("F", "G", "H", "J", "K"),
+            ("A", "B", "C", "D", "E")]
+
+    if len(easting) == 5 & len(northing) == 5:
+        for i in range(0,5):
+            if letter in grid[i]:
+                northing_corr = i
+                easting_corr = (grid[i].index(letter))
+
+    easting = '%s%s' % (easting_corr, easting)
+    northing = '%s%s' % (northing_corr, northing)
+
+    return easting, northing
+
 
 @app.callback(
     Output('output-table', 'data'),
@@ -252,26 +293,33 @@ app.layout = html.Div(children=[
     State('output-dropdown', 'value'),
 )
 def convert_data(n_clicks, data, input_name, output_name):
-    if input_name != None and output_name != None:
-        input_epsg = input_name[input_name.find('epsg:'):]
-        output_epsg = output_name[output_name.find('epsg:'):]
-        conversion_transformer = pyproj.Transformer.from_crs(input_epsg, output_epsg)
-        # convert output to epsg:4326 for map plotting
-        wgs84_transformer = pyproj.Transformer.from_crs(input_epsg, 'epsg:4326')
-        for row in data:
-            if row=={}:
-                break
-            try:
-                row['x_res'], row['y_res'] = conversion_transformer.transform(row['x_src'], row['y_src'])
-                if input_epsg == 'epsg:4326':
-                    row['lat'], row['lon'] = row['x_src'], row['y_src']
-                elif output_epsg == 'epsg:4326':
-                    row['lat'], row['lon'] = row['x_res'], row['y_res']
-                else:
-                    row['lat'], row['lon'] = wgs84_transformer.transform(row['x_src'], row['y_src'])
+    print("convert_data entry()")
+    if not input_name or not output_name:
+        return data
+    
+    input_epsg = input_name[input_name.find('epsg:'):]
+    output_epsg = output_name[output_name.find('epsg:'):]
+    conversion_transformer = pyproj.Transformer.from_crs(input_epsg, output_epsg)
+    # convert output to epsg:4326 for map plotting
+    wgs84_transformer = pyproj.Transformer.from_crs(input_epsg, 'epsg:4326')
+    for row in data:
+        if row=={}:
+            break
+        try:
+            if input_name == "Irish National Grid Ref. (with letter) - epsg:29903":
+                row['x_src'], row['y_src'] = irishgrid2xy(row['grid_ref'])
+                print(row['y_src'])
+                print(row['x_src'])
+            row['x_res'], row['y_res'] = conversion_transformer.transform(row['x_src'], row['y_src'])
+            if input_epsg == 'epsg:4326':
+                row['lat'], row['lon'] = row['x_src'], row['y_src']
+            elif output_epsg == 'epsg:4326':
+                row['lat'], row['lon'] = row['x_res'], row['y_res']
+            else:
+                row['lat'], row['lon'] = wgs84_transformer.transform(row['x_src'], row['y_src'])
 
-            except Exception as e:
-                print(e)
+        except Exception as e:
+            print(e)
     return data
 
 
@@ -332,6 +380,24 @@ def update_output(data, input_name, output_name):
 )
 def clear_input_data(n_clicks):
     return empty_data
+
+@app.callback(
+    Output('input-table', 'columns'),
+    Input('input-dropdown', 'value'),
+)
+def update_input_table_columns(value):
+    if value == "Irish National Grid Ref. (with letter) - epsg:29903":
+        columns=([
+                {'id': 'grid_ref', 'name': 'Grid Ref', 'type': 'text'},
+                {'id': 'id', 'name': 'ID', 'type': 'text'},
+                ])
+    else:
+        columns=([{'id': 'x_src', 'name': 'Lat / Northing', 'type': 'numeric'},
+                {'id': 'y_src', 'name': 'Lon / Easting', 'type': 'numeric'},
+                {'id': 'id', 'name': 'ID', 'type': 'text'},
+                ])
+    
+    return columns
 
 if __name__ == '__main__':
     app.run_server(debug=True)
