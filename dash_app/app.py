@@ -59,10 +59,13 @@ except:
 mapbox_ids = ["light-v9", "dark-v9", "streets-v9",
               "outdoors-v9", "satellite-streets-v9"]
 
-epsg_list = ["Irish National Grid Ref. (with letter) - epsg:29903"]
+irish_nation_grid_ref = "TM75 / Irish Grid (prepending letter) - epsg:29903"
+epsg_list = []
 for epsg in pyproj.get_codes('EPSG', 'CRS'):
     name = pyproj.CRS("epsg:{}".format(epsg)).name
     epsg_list.append("{} - epsg:{}".format(name, epsg))
+    if epsg == "29903":
+        epsg_list.append(irish_nation_grid_ref)
 
 MAP_ID = "map-id"
 BASE_LAYER_ID = "base-layer-id"
@@ -122,6 +125,7 @@ sidebar = html.Div(id='sidebar',
                        html.H2('User notes:'),
                        html.Ul(children=[
                        html.Li("For GPS (Lat, Lon) coordinates use WGS 84 - epsg:4326"),
+                       html.Li("For Irish users the Irish National Grid with prepending letter can be found in the dropdown as 'TM75 / Irish Grid (prepending  letter) - epsg:29903'"),
                        html.Li("This is an old project that I do not actively maintain but am happy to keep alive as people seem to be using it."),
                        html.Li(children=[
                             "The underlying code can be found on  ",
@@ -284,6 +288,41 @@ def irishgrid2xy(grid_ref):
 
     return easting, northing
 
+def xy2irishgrid(x, y):
+    """
+    Convert x and y coordinate integers into irish grid reference string
+    """
+    x = str(x)
+    y = str(y)
+
+    grid = [("V", "W", "X", "Y", "Z"),
+            ("Q", "R", "S", "T", "U"),
+            ("L", "M", "N", "O", "P"),
+            ("F", "G", "H", "J", "K"),
+            ("A", "B", "C", "D", "E")]
+    
+    if (len(x) > 6) | (len(y) > 6):
+        return "Not in IRE"
+
+    if len(x) < 6:
+        easting_corr = '0'
+        easting = x
+    else:
+        easting_corr = x[0]
+        easting = x[1:]
+
+    if len(y) < 6:
+        northing_corr = '0'
+        northing = y
+    else:
+        northing_corr = y[0]
+        northing = y[1:]
+    try:
+        letter = grid[int(northing_corr)][int(easting_corr)]
+    except:
+        return "Not in IRE"
+    grid_ref = '%s %s %s' % (letter, easting, northing)
+    return grid_ref
 
 @app.callback(
     Output('output-table', 'data'),
@@ -306,10 +345,9 @@ def convert_data(n_clicks, data, input_name, output_name):
         if row=={}:
             break
         try:
-            if input_name == "Irish National Grid Ref. (with letter) - epsg:29903":
+            if input_name == irish_nation_grid_ref:
                 row['x_src'], row['y_src'] = irishgrid2xy(row['grid_ref'])
-                print(row['y_src'])
-                print(row['x_src'])
+            
             row['x_res'], row['y_res'] = conversion_transformer.transform(row['x_src'], row['y_src'])
             if input_epsg == 'epsg:4326':
                 row['lat'], row['lon'] = row['x_src'], row['y_src']
@@ -317,6 +355,9 @@ def convert_data(n_clicks, data, input_name, output_name):
                 row['lat'], row['lon'] = row['x_res'], row['y_res']
             else:
                 row['lat'], row['lon'] = wgs84_transformer.transform(row['x_src'], row['y_src'])
+            
+            if output_name == irish_nation_grid_ref:
+                row['grid_ref'] = xy2irishgrid(row['x_res'], row['y_res'])
 
         except Exception as e:
             print(e)
@@ -352,11 +393,11 @@ def update_output(data, input_name, output_name):
                         html.Br(),
                         html.B(input_name),
                         html.Br(),
-                        f"{row['x_src']}, {row['y_src']}",
+                        row['grid_ref'] if input_name==irish_nation_grid_ref else f"{row['x_src']}, {row['y_src']}",
                         html.Br(),
                         html.B(output_name),
                         html.Br(),
-                        f"{round(row['x_res'], 2)}, {round(row['y_res'], 2)}",
+                        row['grid_ref'] if output_name==irish_nation_grid_ref else f"{round(row['x_res'], 2)}, {round(row['y_res'], 2)}",
                         html.Br(),
                         html.A(
                             html.Button(["Open Google Maps ", html.I(className="fa fa-external-link-alt")], className="btn-primary"),
@@ -370,7 +411,7 @@ def update_output(data, input_name, output_name):
             markers_list.append(marker)
 
         except Exception as e:
-                    print(e)
+            print(e)
 
     return markers_list
 
@@ -386,7 +427,25 @@ def clear_input_data(n_clicks):
     Input('input-dropdown', 'value'),
 )
 def update_input_table_columns(value):
-    if value == "Irish National Grid Ref. (with letter) - epsg:29903":
+    if value == irish_nation_grid_ref:
+        columns=([
+                {'id': 'grid_ref', 'name': 'Grid Ref', 'type': 'text'},
+                {'id': 'id', 'name': 'ID', 'type': 'text'},
+                ])
+    else:
+        columns=([{'id': 'x_src', 'name': 'Lat / Northing', 'type': 'numeric'},
+                {'id': 'y_src', 'name': 'Lon / Easting', 'type': 'numeric'},
+                {'id': 'id', 'name': 'ID', 'type': 'text'},
+                ])
+    
+    return columns
+
+@app.callback(
+    Output('output-table', 'columns'),
+    Input('output-dropdown', 'value'),
+)
+def update_input_table_columns(value):
+    if value == irish_nation_grid_ref:
         columns=([
                 {'id': 'grid_ref', 'name': 'Grid Ref', 'type': 'text'},
                 {'id': 'id', 'name': 'ID', 'type': 'text'},
