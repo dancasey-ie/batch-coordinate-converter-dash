@@ -1,9 +1,60 @@
+import logging
 from dash import Dash, html, dcc, dash_table
 from dash.dependencies import Output, Input, State
 import dash_bootstrap_components as dbc
 import dash_leaflet as dl
 import pyproj
 import os
+
+logger = logging.getLogger(__name__)
+
+IRISH_NATIONAL_GRID_REF = "TM75 / Irish Grid (prepending letter) - epsg:29903"
+GA_MEASUREMENT_ID = os.environ.get('GA_MEASUREMENT_ID', None)
+
+# Sidebar style 
+SIDEBAR_STYLE = {
+    "position": "fixed",
+    "top": "30px",
+    "left": 0,
+    "bottom": 0,
+    "width": "18rem",
+    "padding": "1rem",
+    "background-color": "#f8f9fa",
+    "transition": "all 0.3s",
+}
+
+SIDEBAR_HIDDEN = {
+    "position": "fixed",
+    "top": "30px",
+    "left": "-18rem",      # move it off screen
+    "bottom": 0,
+    "width": "18rem",
+    "padding": "1rem",
+    "background-color": "#f8f9fa",
+    "transition": "all 0.3s",
+}
+
+CONTENT_STYLE = {
+    "margin-left": "18rem",
+    "padding": "2rem",
+    "transition": "all 0.3s",
+}
+
+CONTENT_EXPANDED = {
+    "margin-left": "0",
+    "padding": "2rem",
+    "transition": "all 0.3s",
+}
+
+COLLAPSE_BTN_STYLE = {
+        "position": "fixed",
+        "top": "10px",
+        "left": "10px",
+        "zIndex": 2000,
+        "padding": "6px 6px",
+        "fontSize": "16px",
+        "cursor": "pointer",
+    }
 
 app = Dash(__name__,
            url_base_pathname="/batch-coordinate-converter/",
@@ -16,8 +67,6 @@ app = Dash(__name__,
            update_title=None)
 server = app.server
 app.title = 'Batch Coordinate Converter'
-
-GA_MEASUREMENT_ID = os.environ.get('GA_MEASUREMENT_ID', None)
 
 if GA_MEASUREMENT_ID:
     # Inject Google Analytics script into the <head>
@@ -59,13 +108,13 @@ except:
 mapbox_ids = ["light-v9", "dark-v9", "streets-v9",
               "outdoors-v9", "satellite-streets-v9"]
 
-irish_nation_grid_ref = "TM75 / Irish Grid (prepending letter) - epsg:29903"
+
 epsg_list = []
 for epsg in pyproj.get_codes('EPSG', 'CRS'):
     name = pyproj.CRS("epsg:{}".format(epsg)).name
     epsg_list.append("{} - epsg:{}".format(name, epsg))
     if epsg == "29903":
-        epsg_list.append(irish_nation_grid_ref)
+        epsg_list.append(IRISH_NATIONAL_GRID_REF)
 
 MAP_ID = "map-id"
 BASE_LAYER_ID = "base-layer-id"
@@ -243,6 +292,7 @@ main = html.Div(
     ])
 
 app.layout = html.Div(children=[
+    html.Button("☰", id="toggle-btn", n_clicks=0, style=COLLAPSE_BTN_STYLE),
     sidebar,
     main
 ])
@@ -253,6 +303,7 @@ def irishgrid2xy(grid_ref):
     to xy (easting northing) with an origin at the bottem
     left of grid "V"
     """
+    logger.debug("irishgrid2xy()")
     grid_ref = grid_ref.strip().upper()
     if " " in grid_ref:
         grid_ref = grid_ref.split(" ")
@@ -292,6 +343,7 @@ def xy2irishgrid(x, y):
     """
     Convert x and y coordinate integers into irish grid reference string
     """
+    logger.debug("xy2irishgrid()")
     x = str(x)
     y = str(y)
 
@@ -332,7 +384,9 @@ def xy2irishgrid(x, y):
     State('output-dropdown', 'value'),
 )
 def convert_data(n_clicks, data, input_name, output_name):
-    print("convert_data entry()")
+    logger.debug("convert_data()")
+    logger.info(f"Converting from '{input_name}' to '{output_name}'")
+
     if not input_name or not output_name:
         return data
     
@@ -345,7 +399,7 @@ def convert_data(n_clicks, data, input_name, output_name):
         if row=={}:
             break
         try:
-            if input_name == irish_nation_grid_ref:
+            if input_name == IRISH_NATIONAL_GRID_REF:
                 row['x_src'], row['y_src'] = irishgrid2xy(row['grid_ref'])
             
             row['x_res'], row['y_res'] = conversion_transformer.transform(row['x_src'], row['y_src'])
@@ -356,7 +410,7 @@ def convert_data(n_clicks, data, input_name, output_name):
             else:
                 row['lat'], row['lon'] = wgs84_transformer.transform(row['x_src'], row['y_src'])
             
-            if output_name == irish_nation_grid_ref:
+            if output_name == IRISH_NATIONAL_GRID_REF:
                 row['grid_ref'] = xy2irishgrid(row['x_res'], row['y_res'])
 
         except Exception as e:
@@ -371,6 +425,10 @@ def convert_data(n_clicks, data, input_name, output_name):
     State('output-dropdown', 'value')
     )
 def update_output(data, input_name, output_name):
+    logger.debug("update_output()")
+    print(f"input_name: {input_name}")
+    print(f"output_name: {output_name}")
+
     if not data or not output_name:
         return []
     
@@ -393,11 +451,11 @@ def update_output(data, input_name, output_name):
                         html.Br(),
                         html.B(input_name),
                         html.Br(),
-                        row['grid_ref'] if input_name==irish_nation_grid_ref else f"{row['x_src']}, {row['y_src']}",
+                        row['grid_ref'] if input_name==IRISH_NATIONAL_GRID_REF else f"{row['x_src']}, {row['y_src']}",
                         html.Br(),
                         html.B(output_name),
                         html.Br(),
-                        row['grid_ref'] if output_name==irish_nation_grid_ref else f"{round(row['x_res'], 2)}, {round(row['y_res'], 2)}",
+                        row['grid_ref'] if output_name==IRISH_NATIONAL_GRID_REF else f"{round(row['x_res'], 2)}, {round(row['y_res'], 2)}",
                         html.Br(),
                         html.A(
                             html.Button(["Open Google Maps ", html.I(className="fa fa-external-link-alt")], className="btn-primary"),
@@ -411,7 +469,7 @@ def update_output(data, input_name, output_name):
             markers_list.append(marker)
 
         except Exception as e:
-            print(e)
+            logging.exception("Error updating output")
 
     return markers_list
 
@@ -427,7 +485,8 @@ def clear_input_data(n_clicks):
     Input('input-dropdown', 'value'),
 )
 def update_input_table_columns(value):
-    if value == irish_nation_grid_ref:
+    logger.debug("update_input_table_columns()")
+    if value == IRISH_NATIONAL_GRID_REF:
         columns=([
                 {'id': 'grid_ref', 'name': 'Grid Ref', 'type': 'text'},
                 {'id': 'id', 'name': 'ID', 'type': 'text'},
@@ -444,8 +503,9 @@ def update_input_table_columns(value):
     Output('output-table', 'columns'),
     Input('output-dropdown', 'value'),
 )
-def update_input_table_columns(value):
-    if value == irish_nation_grid_ref:
+def update_output_table_columns(value):
+    logger.debug("update_output_table_columns()")
+    if value == IRISH_NATIONAL_GRID_REF:
         columns=([
                 {'id': 'grid_ref', 'name': 'Grid Ref', 'type': 'text'},
                 {'id': 'id', 'name': 'ID', 'type': 'text'},
@@ -457,6 +517,17 @@ def update_input_table_columns(value):
                 ])
     
     return columns
+
+# --- Callback to toggle sidebar ---
+@app.callback(
+    Output("sidebar", "style"),
+    Output("main", "style"),
+    Input("toggle-btn", "n_clicks"),
+)
+def toggle_sidebar(n):
+    if n % 2 == 1:  # odd clicks → collapsed
+        return SIDEBAR_HIDDEN, CONTENT_EXPANDED
+    return SIDEBAR_STYLE, CONTENT_STYLE
 
 if __name__ == '__main__':
     app.run_server(debug=True)

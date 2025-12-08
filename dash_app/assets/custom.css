@@ -23,15 +23,15 @@ h2 {
 }
 
 .main {
-    margin-left: 20rem;
-    margin-right: 10rem;
+    margin-left: 0;
+    margin-right: 0;
     padding: 2rem 1rem;
 }
 
 .sidebar {
     position: fixed;
     overflow:scroll;
-     top: 0;
+     top: 30px;
      left: 0;
      bottom: 0;
      width: 20rem;
