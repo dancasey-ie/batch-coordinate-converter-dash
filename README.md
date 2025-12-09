@@ -39,7 +39,8 @@ docker run -it -p 8080:8080 -e MAPBOX_TOKEN=${MAPBOX_TOKEN} --name batch-coordin
 
 ```
 python3 -m venv ./env
-source bin/activate
+source ./env/bin/activate 
+# Windows: source ./env/Scripts/activate
 pip install -r dash_app/requirements.txt
 python dash_app/app.py
 

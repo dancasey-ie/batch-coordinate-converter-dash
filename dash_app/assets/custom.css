@@ -22,22 +22,57 @@ h2 {
     font-size: 21px;
 }
 
-.main {
-    margin-left: 0;
-    margin-right: 0;
-    padding: 2rem 1rem;
+.btn{
+    margin: 5px;
+    width: 120px;
+    height: 40px;
 }
 
-.sidebar {
-    position: fixed;
-    overflow:scroll;
-     top: 30px;
-     left: 0;
-     bottom: 0;
-     width: 20rem;
-     padding: 2rem 1rem;
-     background-color: #f8f9fa
- }
+
+ /* Swap button */
+#swap-btn {
+    background-color: #6c757d;  /* Bootstrap grey */
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+#swap-btn:hover {
+    background-color: #5a6268; /* Slightly darker grey on hover */
+}
+
+/* Convert button */
+#convert-btn {
+    background-color: #007bff; /* Bootstrap blue */
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+#convert-btn:hover {
+    background-color: #0069d9; /* Darker blue on hover */
+}
+
+/* Clear button */
+#clear-btn {
+    background-color: #6c757d;  /* Same grey as swap button */
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+#clear-btn:hover {
+    background-color: #5a6268;
+}
 
 .map_marker_tooltip{
     text-align: left;

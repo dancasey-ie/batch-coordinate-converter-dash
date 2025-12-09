@@ -6,26 +6,45 @@ import dash_leaflet as dl
 import pyproj
 import os
 
-logger = logging.getLogger(__name__)
+logging.basicConfig(
+    level=logging.WARNING,
+    format="%(asctime)s %(levelname)s %(name)s: %(message)s"
+)
+logger = logging.getLogger()
 
 IRISH_NATIONAL_GRID_REF = "TM75 / Irish Grid (prepending letter) - epsg:29903"
 GA_MEASUREMENT_ID = os.environ.get('GA_MEASUREMENT_ID', None)
 
+COLLAPSE_BTN_STYLE = {
+    "height": "30px",
+    "position": "fixed",
+    "top": "10px",
+    "left": "10px",
+    "zIndex": 2000,
+    "fontSize": "18px",
+    "cursor": "pointer",
+    "background-color": "#6c757d",
+    "color": "white",
+    "border": "none",
+    "border-radius": "5px",
+}
+
 # Sidebar style 
 SIDEBAR_STYLE = {
     "position": "fixed",
-    "top": "30px",
+    "top": "40px",
     "left": 0,
     "bottom": 0,
     "width": "18rem",
     "padding": "1rem",
     "background-color": "#f8f9fa",
     "transition": "all 0.3s",
+    "overflow":"scroll"
 }
 
 SIDEBAR_HIDDEN = {
     "position": "fixed",
-    "top": "30px",
+    "top": "40px",
     "left": "-18rem",      # move it off screen
     "bottom": 0,
     "width": "18rem",
@@ -45,16 +64,6 @@ CONTENT_EXPANDED = {
     "padding": "2rem",
     "transition": "all 0.3s",
 }
-
-COLLAPSE_BTN_STYLE = {
-        "position": "fixed",
-        "top": "10px",
-        "left": "10px",
-        "zIndex": 2000,
-        "padding": "6px 6px",
-        "fontSize": "16px",
-        "cursor": "pointer",
-    }
 
 app = Dash(__name__,
            url_base_pathname="/batch-coordinate-converter/",
@@ -104,7 +113,7 @@ mapbox_url = "https://api.mapbox.com/styles/v1/mapbox/{id}/tiles/{{z}}/{{x}}/{{y
 try:
     mapbox_token = os.environ.get('MAPBOX_TOKEN')
 except:
-    print("Failed to locate MAPBOX_TOKEN environmental variable. Register a token at https://docs.mapbox.com/help/getting-started/access-tokens/")
+    logger.error("Failed to locate MAPBOX_TOKEN environmental variable. Register a token at https://docs.mapbox.com/help/getting-started/access-tokens/")
 mapbox_ids = ["light-v9", "dark-v9", "streets-v9",
               "outdoors-v9", "satellite-streets-v9"]
 
@@ -123,13 +132,13 @@ COORDINATE_CLICK_ID = "coordinate-click-id"
 MAX_NUM_OF_ROWS = 1000
 
 # defaults
-initial_input_dropdown_value = "TM75 / Irish Grid - epsg:29903"
-initial_output_dropdown_value = "WGS 84 - epsg:4326"
-initial_data = [	
+INITIAL_INPUT_DROPDOWN_VALUE = "TM75 / Irish Grid - epsg:29903"
+INITIAL_OUTPUT_DROPDOWN_VALUE = "WGS 84 - epsg:4326"
+INITIAL_DATA = [	
     {"x_src": 80367, "y_src":84425, "id":"Corrán Tuathail"},
     {"x_src": 335793, "y_src":327689, "id":"Slieve Donard"}
 ]
-initial_data = initial_data + [dict() for i in range(1, MAX_NUM_OF_ROWS - len(initial_data))]
+INITIAL_DATA = INITIAL_DATA + [dict() for i in range(1, MAX_NUM_OF_ROWS - len(INITIAL_DATA))]
 empty_data = [dict() for i in range(1, MAX_NUM_OF_ROWS)]
 
 input_table = dash_table.DataTable(
@@ -138,7 +147,7 @@ input_table = dash_table.DataTable(
              {'id': 'y_src', 'name': 'Lon / Easting', 'type': 'numeric'},
              {'id': 'id', 'name': 'ID', 'type': 'text'}
               ]),
-    data=initial_data,
+    data=INITIAL_DATA,
     editable=True, 
     page_action='none',
     )
@@ -155,6 +164,7 @@ output_table = dash_table.DataTable(
     )
 
 sidebar = html.Div(id='sidebar',
+                   style=SIDEBAR_STYLE,
                    className='sidebar',
                    children=[
                         html.H1('Batch Coordinate Converter'),
@@ -175,58 +185,70 @@ sidebar = html.Div(id='sidebar',
                        html.Ul(children=[
                        html.Li("For GPS (Lat, Lon) coordinates use WGS 84 - epsg:4326"),
                        html.Li("For Irish users the Irish National Grid with prepending letter can be found in the dropdown as 'TM75 / Irish Grid (prepending  letter) - epsg:29903'"),
-                       html.Li("This is an old project that I do not actively maintain but am happy to keep alive as people seem to be using it."),
+                       html.Li("This is an old project, but regularly used. Maintenance has been neglected but improvements are on the way."),
                        html.Li(children=[
                             "The underlying code can be found on  ",
                             html.A("Github", href="https://github.com/dancasey-ie/batch-coordinate-converter-dash", target="_blank"),
                             "."
                        ]),
                        html.Li(children=[
-                            "Please reach out if you would like further development. ",
+                            "Bugs and feature requests can be raised as ",
+                            html.A("Github Issues", href="https://github.com/dancasey-ie/batch-coordinate-converter-dash/issues", target="_blank"),
+                            ". ",
+                       ]),
+                       html.Li(children=[
+                            "You can also reach out directly at ",
                             html.A("dancasey.ie", href="https://dancasey.ie", target="_blank"),
-                            "."
+                            ". ",
                        ]),
                        ]),    
                    ]
                    )
 main = html.Div(
     id='main',
+    style=CONTENT_STYLE,
     className='main',
     children=[
         html.Div(
             [dbc.Row([
                 dbc.Col(
                     html.Div([
-                        'Convert Data:',
+                        'Convert From:',
                         dcc.Dropdown(
                             options=epsg_list,
-                            value=initial_input_dropdown_value,
+                            value=INITIAL_INPUT_DROPDOWN_VALUE,
                             id='input-dropdown'),
-                        f'Initial input: {initial_input_dropdown_value}']
+                        f'Initial input: {INITIAL_INPUT_DROPDOWN_VALUE}']
                     ),
-                    className='col-12 col-md-5 text-center'),
+                    className='col-12 col-md-5 text-center d-flex justify-content-center align-items-center',
+                    style={"height": "100px"}),
                 dbc.Col(
                     html.Div([
                         dbc.Button(
-                            'Convert', id='convert-btn', n_clicks=0),
-                        html.Br(),
-                        html.Br(),
+                            'Swap',
+                            id='swap-btn',
+                            n_clicks=0,
+                            className="btn"
+                        ),
                         dbc.Button(
-                        'Clear Input Data', id='clear-btn', n_clicks=0)
+                            'Convert', id='convert-btn', n_clicks=0, className="btn"),
+                        dbc.Button(
+                        'Clear Data', id='clear-btn', n_clicks=0, className="btn")
                     ]
                     ),
                     className='col-12 col-md-2 text-center'),
                 dbc.Col(
                     html.Div(children=[
-                        'Convert to:',
+                        'Convert To:',
                         dcc.Dropdown(
                             options=epsg_list,
-                            value=initial_output_dropdown_value,
+                            value=INITIAL_OUTPUT_DROPDOWN_VALUE,
                             id='output-dropdown'),
-                        f'Initial output: {initial_output_dropdown_value}'
+                        f'Initial output: {INITIAL_OUTPUT_DROPDOWN_VALUE}'
                     ]
                     ),
-                    className='col-12 col-md-4 text-center'),
+                    className='col-12 col-md-5 text-center d-flex justify-content-center align-items-center',
+                    style={"height": "100px"}),
             ]),
                 dbc.Row([
                     dbc.Col(
@@ -292,7 +314,12 @@ main = html.Div(
     ])
 
 app.layout = html.Div(children=[
-    html.Button("☰", id="toggle-btn", n_clicks=0, style=COLLAPSE_BTN_STYLE),
+    html.Button(
+        html.I(className="fa fa-chevron-left"),  # Font Awesome icon
+        id="toggle-btn",
+        n_clicks=0,
+        style=COLLAPSE_BTN_STYLE
+    ),
     sidebar,
     main
 ])
@@ -303,7 +330,7 @@ def irishgrid2xy(grid_ref):
     to xy (easting northing) with an origin at the bottem
     left of grid "V"
     """
-    logger.debug("irishgrid2xy()")
+    logger.debug("irishgrid2xy() entry")
     grid_ref = grid_ref.strip().upper()
     if " " in grid_ref:
         grid_ref = grid_ref.split(" ")
@@ -336,14 +363,15 @@ def irishgrid2xy(grid_ref):
 
     easting = '%s%s' % (easting_corr, easting)
     northing = '%s%s' % (northing_corr, northing)
-
+    
+    logger.debug("irishgrid2xy() entry")
     return easting, northing
 
 def xy2irishgrid(x, y):
     """
     Convert x and y coordinate integers into irish grid reference string
     """
-    logger.debug("xy2irishgrid()")
+    logger.debug("xy2irishgrid() entry")
     x = str(x)
     y = str(y)
 
@@ -374,6 +402,8 @@ def xy2irishgrid(x, y):
     except:
         return "Not in IRE"
     grid_ref = '%s %s %s' % (letter, easting, northing)
+
+    logger.debug("xy2irishgrid() exit")
     return grid_ref
 
 @app.callback(
@@ -384,37 +414,95 @@ def xy2irishgrid(x, y):
     State('output-dropdown', 'value'),
 )
 def convert_data(n_clicks, data, input_name, output_name):
-    logger.debug("convert_data()")
-    logger.info(f"Converting from '{input_name}' to '{output_name}'")
+    """
+    Convert coordinate values in a list of row dictionaries from one CRS to another.
+
+    This function processes a list of input records—each representing a point with
+    coordinate fields—and converts their coordinates from the input coordinate
+    reference system (CRS) to the output CRS requested by the user. It uses
+    `pyproj.Transformer` for CRS transformation and supports special handling for
+    Irish National Grid coordinate formats (alphanumeric grid codes vs. numeric
+    easting/northing).
+
+    The function also ensures that each row gets a latitude/longitude pair
+    (EPSG:4326) for map display, even when the final output CRS differs.
+
+    Parameters
+    ----------
+    n_clicks : int or None
+        The number of times the user has clicked the "Convert" button. Included
+        for Dash callback compatibility but not otherwise used in the logic.
+    data : list[dict]
+        A list of dictionaries representing rows in the input table. Each row may
+        contain coordinate fields such as `grid_ref`, `x_src`, and `y_src`.
+    input_name : str
+        The selected input CRS name, containing an `'epsg:####'` substring or the
+        `IRISH_NATIONAL_GRID_REF` constant.
+    output_name : str
+        The selected output CRS name, containing an `'epsg:####'` substring or the
+        `IRISH_NATIONAL_GRID_REF` constant.
+
+    Returns
+    -------
+    list[dict]
+        The same list of row dictionaries, modified in place with added or updated
+        coordinate fields:
+        - `x_res`, `y_res` for transformed coordinates
+        - `lat`, `lon` for WGS84 (EPSG:4326) coordinates
+        - `grid_ref` when converting to/from Irish National Grid format
+
+    Notes
+    -----
+    - If `input_name` or `output_name` is missing, the input data is returned
+      unchanged.
+    - Irish National Grid coordinates require custom conversion functions
+      (`irishgrid2xy`, `xy2irishgrid`).
+    - Processing stops early if an empty row (`{}`) is encountered.
+    - Errors during row conversion are logged with full stack traces.
+    - Debug and info logs provide detailed visibility into CRS paths and
+      transformation steps.
+    """
+    logger.debug("convert_data() entry")
 
     if not input_name or not output_name:
         return data
+    
+    data_not_empty = len([r for r in data if r ])
+    logger.info(f"Converting {data_not_empty} records from '{input_name}' to '{output_name}'")
     
     input_epsg = input_name[input_name.find('epsg:'):]
     output_epsg = output_name[output_name.find('epsg:'):]
     conversion_transformer = pyproj.Transformer.from_crs(input_epsg, output_epsg)
     # convert output to epsg:4326 for map plotting
     wgs84_transformer = pyproj.Transformer.from_crs(input_epsg, 'epsg:4326')
+    count = 0
     for row in data:
         if row=={}:
             break
         try:
+            count += 1
             if input_name == IRISH_NATIONAL_GRID_REF:
+                logger.debug("Converting input irish grid code to irish grid easting, northing")
                 row['x_src'], row['y_src'] = irishgrid2xy(row['grid_ref'])
             
             row['x_res'], row['y_res'] = conversion_transformer.transform(row['x_src'], row['y_src'])
             if input_epsg == 'epsg:4326':
+                logger.debug("Copying input epsg:4326 coordinates to lat lon values for map markers")
                 row['lat'], row['lon'] = row['x_src'], row['y_src']
             elif output_epsg == 'epsg:4326':
+                logger.debug("Copying output epsg:4326 coordinates to lat lon values for map markers")
                 row['lat'], row['lon'] = row['x_res'], row['y_res']
             else:
+                logger.debug("Get Lat lon")
                 row['lat'], row['lon'] = wgs84_transformer.transform(row['x_src'], row['y_src'])
             
             if output_name == IRISH_NATIONAL_GRID_REF:
+                logger.debug("Converting input Irish grid easting, northing to Irish grid code")
                 row['grid_ref'] = xy2irishgrid(row['x_res'], row['y_res'])
-
+            
         except Exception as e:
-            print(e)
+            logger.exception("Error:")
+    logger.debug("convert_data() exit")
     return data
 
 
@@ -424,10 +512,47 @@ def convert_data(n_clicks, data, input_name, output_name):
     State('input-dropdown', 'value'),
     State('output-dropdown', 'value')
     )
-def update_output(data, input_name, output_name):
-    logger.debug("update_output()")
-    print(f"input_name: {input_name}")
-    print(f"output_name: {output_name}")
+def update_map_marker(data, input_name, output_name):
+    """
+    Build a list of Dash Leaflet marker components from geospatial result data.
+
+    This function processes an iterable of row dictionaries containing location
+    and coordinate transformation information. For each valid row, a 
+    `dl.Marker` with a `dl.Popup` is created that displays details such as:
+    - index number
+    - record id
+    - input coordinate value (formatted according to `input_name`)
+    - output coordinate value (formatted according to `output_name`)
+    - a link to open the marker location in Google Maps
+
+    Parameters
+    ----------
+    data : list[dict]
+        A list of dictionaries where each dictionary represents a single
+        transformed point with keys such as 'lat', 'lon', 'grid_ref',
+        'x_src', 'y_src', 'x_res', and 'y_res'. The loop stops early if an
+        empty dict `{}` is encountered.
+    input_name : str
+        The name of the input coordinate system. Determines how the
+        input coordinates are displayed in the popup.
+    output_name : str
+        The name of the output coordinate system. Determines how the
+        output coordinates are displayed in the popup.
+
+    Returns
+    -------
+    list
+        A list of `dl.Marker` objects representing each point. An empty list
+        is returned if `data` or `output_name` is missing.
+
+    Notes
+    -----
+    - The function logs debug messages on entry and exit.
+    - Any exception while building an individual marker is logged via 
+      `logging.exception()`, and processing continues with the next row.
+    - Google Maps links open in a new browser tab.
+    """
+    logger.debug("update_output() entry")
 
     if not data or not output_name:
         return []
@@ -471,6 +596,7 @@ def update_output(data, input_name, output_name):
         except Exception as e:
             logging.exception("Error updating output")
 
+    logger.debug("update_output() exit")
     return markers_list
 
 @app.callback(
@@ -478,6 +604,8 @@ def update_output(data, input_name, output_name):
     Input('clear-btn', 'n_clicks'),
 )
 def clear_input_data(n_clicks):
+    logger.debug("clear_input_data() entry")
+    logger.debug("clear_input_data() exit")
     return empty_data
 
 @app.callback(
@@ -485,7 +613,35 @@ def clear_input_data(n_clicks):
     Input('input-dropdown', 'value'),
 )
 def update_input_table_columns(value):
-    logger.debug("update_input_table_columns()")
+    """
+    Return the appropriate Dash DataTable column definitions based on the
+    selected input coordinate system.
+
+    This function updates the structure of the input table by choosing which
+    columns should be displayed when the user selects a specific coordinate
+    system from the UI. If the selected system is the Irish National Grid, the
+    table will display a single grid reference column. Otherwise, separate
+    numeric X/Y coordinate columns are shown.
+
+    Parameters
+    ----------
+    value : str
+        The name of the selected input coordinate system. Typically compared
+        against the `IRISH_NATIONAL_GRID_REF` constant.
+
+    Returns
+    -------
+    list[dict]
+        A list of Dash DataTable column definition dictionaries. Each dict
+        includes `id`, `name`, and `type` fields describing a table column.
+
+    Notes
+    -----
+    - Debug messages are logged on function entry and exit.
+    - The returned structure is intended for use in the `columns`
+      property of a Dash `dash_table.DataTable`.
+    """
+    logger.debug("update_input_table_columns() entry")
     if value == IRISH_NATIONAL_GRID_REF:
         columns=([
                 {'id': 'grid_ref', 'name': 'Grid Ref', 'type': 'text'},
@@ -497,6 +653,7 @@ def update_input_table_columns(value):
                 {'id': 'id', 'name': 'ID', 'type': 'text'},
                 ])
     
+    logger.debug("update_input_table_columns() exit")
     return columns
 
 @app.callback(
@@ -504,30 +661,74 @@ def update_input_table_columns(value):
     Input('output-dropdown', 'value'),
 )
 def update_output_table_columns(value):
-    logger.debug("update_output_table_columns()")
+    logger.debug("update_output_table_columns() entry")
     if value == IRISH_NATIONAL_GRID_REF:
         columns=([
                 {'id': 'grid_ref', 'name': 'Grid Ref', 'type': 'text'},
                 {'id': 'id', 'name': 'ID', 'type': 'text'},
                 ])
     else:
-        columns=([{'id': 'x_src', 'name': 'Lat / Northing', 'type': 'numeric'},
-                {'id': 'y_src', 'name': 'Lon / Easting', 'type': 'numeric'},
+        columns=([{'id': 'x_res', 'name': 'Lat / Northing', 'type': 'numeric'},
+                {'id': 'y_res', 'name': 'Lon / Easting', 'type': 'numeric'},
                 {'id': 'id', 'name': 'ID', 'type': 'text'},
                 ])
     
+    logger.debug("update_output_table_columns() exit")
     return columns
+
+@app.callback(
+    Output('output-dropdown', 'value'),
+    Output('input-dropdown', 'value'),
+    Input('swap-btn', 'n_clicks'),
+    State('input-dropdown', 'value'),
+    State('output-dropdown', 'value')
+)
+def swap_coordinates(n_clicks, input_value, output_value):
+    """
+    Callback function to swap the values of the input and output dropdowns.
+
+    Parameters
+    ----------
+    n_clicks : int
+        Number of times the swap button has been clicked.
+    input_value : any
+        Current value of the input dropdown.
+    output_value : any
+        Current value of the output dropdown.
+
+    Returns
+    -------
+    tuple
+        (new_output_value, new_input_value) — the swapped values for each dropdown.
+    """
+    logger.debug("swap_coordinates() entry")
+    logger.debug(f"Before swap: input_value={input_value}, output_value={output_value}")
+
+    # Swap the values
+    new_input_value = output_value
+    new_output_value = input_value
+
+    logger.debug(f"After swap: input_value={new_input_value}, output_value={new_output_value}")
+    logger.debug("swap_coordinates() exit")
+
+    return new_output_value, new_input_value
 
 # --- Callback to toggle sidebar ---
 @app.callback(
     Output("sidebar", "style"),
     Output("main", "style"),
+    Output("toggle-btn", "children"),  # to change icon dynamically
     Input("toggle-btn", "n_clicks"),
 )
 def toggle_sidebar(n):
-    if n % 2 == 1:  # odd clicks → collapsed
-        return SIDEBAR_HIDDEN, CONTENT_EXPANDED
-    return SIDEBAR_STYLE, CONTENT_STYLE
+    logger.debug("toggle_sidebar() entry")
+    if n % 2 == 1:  # odd → collapsed
+        icon = html.I(className="fas fa-chevron-right")  # show expand icon
+        return SIDEBAR_HIDDEN, CONTENT_EXPANDED, icon
+    # even → expanded
+    icon = html.I(className="fas fa-chevron-left")  # show collapse icon
+    logger.debug("toggle_sidebar() exit")
+    return SIDEBAR_STYLE, CONTENT_STYLE, icon
 
 if __name__ == '__main__':
     app.run_server(debug=True)
