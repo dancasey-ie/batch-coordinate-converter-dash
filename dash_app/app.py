@@ -372,16 +372,15 @@ def xy2irishgrid(x, y):
     Convert x and y coordinate integers into irish grid reference string
     """
     logger.debug("xy2irishgrid() entry")
-    x = str(x)
-    y = str(y)
+    x = str(x).split('.')[0]
+    y = str(y).split('.')[0]
 
     grid = [("V", "W", "X", "Y", "Z"),
             ("Q", "R", "S", "T", "U"),
             ("L", "M", "N", "O", "P"),
             ("F", "G", "H", "J", "K"),
             ("A", "B", "C", "D", "E")]
-    x = int(x)
-    y = int(y)
+    
     if (len(x) > 6) | (len(y) > 6):
         return "Not in IRE"
 
