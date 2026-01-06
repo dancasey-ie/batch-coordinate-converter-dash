@@ -380,7 +380,8 @@ def xy2irishgrid(x, y):
             ("L", "M", "N", "O", "P"),
             ("F", "G", "H", "J", "K"),
             ("A", "B", "C", "D", "E")]
-    
+    x = int(x)
+    y = int(y)
     if (len(x) > 6) | (len(y) > 6):
         return "Not in IRE"
 
